@@ -8,7 +8,9 @@ estimate_pooled_did <- function(
     date_treated_var,
     control_vars ,
     estimand = "ATT",
-    balancing_method = "ebal"
+    balancing_method = "ebal",
+    lead=450, 
+    followup=450
 ) {
   
   
@@ -39,6 +41,9 @@ estimate_pooled_did <- function(
     
     # Subset data for current cohort: treated at this date OR never treated
     cohort_dt <- dt_full[get(date_treated_var) == treat_date | get(treated_var) == 0]
+    
+    # subset for lead and lags
+    cohort_dt <-  cohort_dt[get(time_var)>treat_date-lead & get(time_var)<treat_date + followup]
     
     # Select relevant columns
     keep_vars <- c(id_var, control_vars, time_var, cum_out_var, 
@@ -91,8 +96,10 @@ estimate_pooled_did <- function(
     
     # Calculate balancing weights
     tryCatch({
+      suppressWarnings(
       weights <- weightit(form, data = wide_dt, 
                           estimand = estimand, method = balancing_method)$weights
+      )
     }, error = function(e) {
       warning(sprintf("Weighting failed for cohort treated on %s: %s", 
                       as.character(treat_date), e$message))
